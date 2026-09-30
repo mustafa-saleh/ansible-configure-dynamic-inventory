@@ -1,4 +1,4 @@
-# 🚀 Ansible Integration in Terraform Provision EC2 and Configure Docker
+# 🚀 Ansible Configure Dynamic Inventory
 
 ![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
 ![Ansible](https://img.shields.io/badge/Ansible-EE0000?style=for-the-badge&logo=ansible&logoColor=white)
@@ -12,9 +12,9 @@
 
 ## 📖 Overview
 
-This project demonstrates how to combine **Terraform** and **Ansible** into a single, hands-off provisioning pipeline. Terraform is responsible for the underlying **AWS** infrastructure — a VPC, subnet, internet gateway, route table, security group and an **EC2** instance — while **Ansible** is responsible for everything that happens *inside* that server once it exists: installing **Docker** and **Docker Compose**, creating a dedicated non-root Linux user, shipping a multi-container application stack, authenticating against a private Docker registry, and starting the containers.
+This project demonstrates how to eliminate one of the most common pain points when combining **Terraform** and **Ansible**: manually copying server IP addresses into a static Ansible inventory file every time infrastructure changes. Instead, this project configures Ansible's **`aws_ec2` dynamic inventory plugin**, which queries the **AWS EC2 API directly** at runtime and builds the inventory on the fly — automatically discovering every matching EC2 instance, its IP address, and its tags, with zero manual bookkeeping.
 
-The key part of this project is the **integration** between the two tools: instead of manually copying the EC2 instance's IP address into an Ansible inventory file after every `terraform apply`, Terraform's `null_resource` and `local-exec` **provisioner** invokes `ansible-playbook` automatically the moment the instance's public IP becomes available — turning "provision infrastructure" and "configure the application" into a single command.
+Two EC2 instances are first provisioned with **Terraform**, then Ansible's dynamic inventory plugin discovers both of them under a common `aws_ec2` host group (filtered by a `Name` tag), and a single playbook installs **Docker** and **Docker Compose**, creates a dedicated Linux user, and deploys a multi-container application stack identically across both servers — proving the same automation scales from one server to a whole fleet without touching a single hardcoded IP.
 
 ### ✨ Ansible Automation key features
 
@@ -23,15 +23,15 @@ The key part of this project is the **integration** between the two tools: inste
 - 🔁 **Idempotency** — tasks can be run repeatedly and will only change the system when it drifts from the desired state
 - 🧩 **Modular building blocks** — reusable **Modules**, **Roles** and **Collections** let automation be composed, shared and version-controlled
 - ⚡ **Ad-hoc command execution** — one-off tasks (e.g. `ping`, `shell`, `yum`) can be run instantly across a fleet without writing a full playbook
-- 🗂️ **Flexible inventory management** — hosts can be grouped by region, role or environment, and inventories can even be generated **dynamically**, as demonstrated by this project's Terraform-driven inventory
-- 🔌 **Extensibility** — custom modules and plugins (e.g. `community.docker.docker_compose_v2`) can extend Ansible's behaviour to fit any infrastructure need
-- 🏪 **Ansible Galaxy** — a public registry for discovering and sharing community-built roles and collections
+- 🗂️ **Dynamic inventory management** — instead of a static list of hosts, an **inventory plugin** can query a live source of truth (like the AWS EC2 API) and build the inventory automatically, grouping and filtering hosts by tags, region or other attributes
+- 🔌 **Extensibility** — custom modules and plugins (e.g. `amazon.aws.aws_ec2`, `community.docker.docker_compose_v2`) can extend Ansible's behaviour to fit any infrastructure need
+- 🏪 **Ansible Galaxy** — a public registry for discovering and sharing community-built roles, modules and inventory plugins
 - 🔒 **Secure secrets handling** — sensitive data (passwords, keys, tokens) can be externalized into `vars_files` and encrypted at rest using **Ansible Vault**
-- 🎯 **Infrastructure-as-code integration** — provisioners like Terraform's `local-exec` let Ansible playbooks run automatically right after infrastructure is created, chaining IaC and configuration management into one seamless workflow, exactly as demonstrated in this project
+- 🎯 **Fleet-wide orchestration** — a single playbook run (`hosts: aws_ec2`) can target every host returned by the dynamic inventory simultaneously, making the automation effortlessly scale from one server to hundreds
 
 ## Demo Project
 
-Ansible Integration in Terraform Provision EC2 and Configure Docker
+Ansible Configure Dynamic Inventory
 
 ## Technologies used
 
@@ -43,38 +43,38 @@ Ansible Integration in Terraform Provision EC2 and Configure Docker
 
 ## Project Description
 
-- Create AWS EC2 Instance with Terraform
-- Write Ansible Playbook that installs necessary technologies like Docker and Docker Compose, copies docker-compose file to the server and starts the Docker containers configured inside the docker-compose file
-- Create Ansible Playbook for Terraform integration
-- Adjust Terraform configuration to execute Ansible Playbook automatically, so once Terraform provisions a server, it executes an Ansible playbook that configures the server
+- Create EC2 Instance with Terraform
+- Write Ansible AWS EC2 Plugin to dynamically sets inventory of EC2 servers that Ansible should manage, instead of hard-coding server addresses in Ansible inventory file
 
 ## 📁 Repository structure
 
 ```text
-ansible-integration-in-terraform-provision-ec2-and-configure-docker/
-├── NOTES.md                        # Personal study notes covering the full Ansible learning path
-├── README.md                       # This file 📄
-├── .gitignore                      # Excludes tfstate, .terraform/, *.tfvars & project-vars from git
-├── images/                         # Screenshots captured while running the demo
-│   ├── terraform-apply-terminal.png
-│   └── ec2-server-docker-running-terminal.png
-├── terraform/                      # Infrastructure as Code - provisions the AWS EC2 instance
-│   ├── providers.tf                  # AWS provider & required Terraform version
-│   ├── main.tf                       # VPC, subnet, security group, EC2 instance & Ansible provisioner
-│   ├── entry-script.sh                # Reference: manual bash equivalent of the Docker install steps
-│   ├── example.tfvars                 # Template committed to the repo - copy to terraform.tfvars
-│   └── terraform.tfvars               # Local, git-ignored real values (region, CIDR, IP, key paths)
-├── ansible/                         # Configuration Management - configures the EC2 instance
-│   ├── ansible.cfg                    # Ansible configuration (default inventory, SSH behaviour)
-│   ├── hosts                           # Static inventory file (used for manual/ad-hoc runs)
-│   ├── deploy-docker-new-user.yaml     # Main playbook - installs Docker/Compose & deploys the stack
-│   ├── project-vars                     # Local, git-ignored vars file (docker_password)
-│   └── example-project-vars             # Template committed to the repo - copy to `project-vars`
-└── bootcamp-java-mysql-project/     # The application stack that gets deployed to the EC2 instance
-    ├── docker-compose-full.yaml       # 3-tier stack: Java app + MySQL + phpMyAdmin (used by Ansible)
-    ├── docker-compose.yaml            # Local dev compose file (MySQL + phpMyAdmin only)
-    ├── Dockerfile                      # Builds the Java application image
-    └── src/                             # Java application source code
+ansible-configure-dynamic-inventory/
+├── NOTES.md                          # Personal study notes covering the full Ansible learning path
+├── README.md                         # This file 📄
+├── .gitignore                        # Excludes tfstate, .terraform/, *.tfvars & project-vars from git
+├── images/                           # Screenshots captured while running the demo
+│   ├── ec2-instances-aws-console.png
+│   ├── ansible-playbook-terminal.png
+│   └── ec2-server-docker-terminal.png
+├── terraform/                        # Infrastructure as Code - provisions 2 AWS EC2 instances
+│   ├── providers.tf                    # AWS provider & required Terraform version
+│   ├── main.tf                         # VPC, subnet, security group & 2 EC2 instances
+│   ├── entry-script.sh                  # Reference: manual bash equivalent of the Docker install steps
+│   ├── example.tfvars                   # Template committed to the repo - copy to terraform.tfvars
+│   └── terraform.tfvars                 # Local, git-ignored real values (region, CIDR, IP, key paths)
+├── ansible/                           # Configuration Management - discovers & configures the EC2 fleet
+│   ├── ansible.cfg                      # Enables the aws_ec2 plugin & sets remote_user/private_key_file
+│   ├── hosts                             # Legacy static inventory file (kept for reference/manual runs)
+│   ├── inventory_aws_ec2.yaml            # Dynamic inventory plugin config - the heart of this project
+│   ├── deploy-docker-new-user.yaml       # Playbook - installs Docker/Compose & deploys the stack
+│   ├── project-vars                       # Local, git-ignored vars file (docker_password)
+│   └── example-project-vars               # Template committed to the repo - copy to `project-vars`
+└── bootcamp-java-mysql-project/       # The application stack that gets deployed to every EC2 instance
+    ├── docker-compose-full.yaml         # 3-tier stack: Java app + MySQL + phpMyAdmin (used by Ansible)
+    ├── docker-compose.yaml              # Local dev compose file (MySQL + phpMyAdmin only)
+    ├── Dockerfile                        # Builds the Java application image
+    └── src/                               # Java application source code
 ```
 
 ## 🏗️ Architecture overview
@@ -83,33 +83,35 @@ ansible-integration-in-terraform-provision-ec2-and-configure-docker/
 flowchart TB
     Dev["💻 Developer<br/>terraform apply -var-file=terraform.tfvars"] --> TF["Terraform Core"]
 
-    subgraph AWS["☁️ AWS"]
+    subgraph AWS["☁️ AWS (eu-central-1)"]
         direction TB
         VPC["VPC + Subnet + Internet Gateway<br/>+ Default Route Table"] --> SG["Security Group<br/>22/tcp ← my_ip, 8080/tcp ← 0.0.0.0/0"]
-        SG --> EC2["EC2 Instance<br/>Amazon Linux 2023 (t2.micro)"]
+        SG --> EC2A["EC2 Instance<br/>dev-server-1 (tag Name=dev-server-1)"]
+        SG --> EC2B["EC2 Instance<br/>dev-server-2 (tag Name=dev-server-2)"]
     end
 
     TF -- "creates" --> AWS
-    EC2 -- "public_ip" --> NR["null_resource.configure_server<br/>(local-exec provisioner)"]
 
-    NR -- "ansible-playbook --inventory <public_ip>,<br/>--private-key ... deploy-docker-new-user.yaml" --> P1
+    EC2A -.->|"EC2 Describe-Instances API call"| Plugin
+    EC2B -.->|"EC2 Describe-Instances API call"| Plugin
 
-    subgraph Playbook["🎭 Ansible Playbook (runs against the new EC2 instance)"]
+    subgraph Ansible["🎭 Ansible Control Node"]
         direction TB
-        P1["Play 1<br/>Wait for SSH port 22"] --> P2["Play 2<br/>Install & start Docker"]
-        P2 --> P3["Play 3<br/>Create appuser<br/>(groups: adm, docker)"]
-        P3 --> P4["Play 4<br/>become appuser → install<br/>Docker Compose CLI plugin"]
-        P4 --> P5["Play 5<br/>Copy docker-compose-full.yaml<br/>docker login → docker compose up"]
+        Plugin["amazon.aws.aws_ec2<br/>inventory_aws_ec2.yaml<br/>(region + tag:Name=dev* filter)"] --> Group["Dynamic group: aws_ec2"]
+        Group --> PB["ansible-playbook -i inventory_aws_ec2.yaml<br/>deploy-docker-new-user.yaml"]
     end
 
-    P5 -- "Ports 8080 / 3306 / 8083" --> Browser["🌐 Browser / curl"]
+    PB -- "SSH (key-based)" --> EC2A
+    PB -- "SSH (key-based)" --> EC2B
+
+    EC2A -- "Ports 8080 / 3306 / 8083" --> Browser["🌐 Browser / curl"]
+    EC2B -- "Ports 8080 / 3306 / 8083" --> Browser
 ```
 
-- **Terraform** is the control node for infrastructure: it defines the VPC, subnet, internet gateway, route table, security group and the EC2 instance itself, using the AWS provider
-- The **security group** only opens SSH (port 22) to the developer's own IP (`var.my_ip`) while opening the application port (8080) to the world — a sensible default for a demo, and easily tightened further for production
-- Once the EC2 instance's public IP is known, Terraform's `null_resource` + `local-exec` **provisioner** hands off control to **Ansible**, passing the IP as a one-off, dynamically generated inventory entry (`--inventory <ip>,`)
-- **Ansible** then runs five sequential plays against that single host: waiting for SSH to be ready, installing Docker, creating a dedicated non-root user, installing Docker Compose, and finally deploying the application stack
-- The deployed stack — a Java app, MySQL and phpMyAdmin — is reachable on ports **8080**, **3306** and **8083** respectively
+- **Terraform** provisions the shared network (VPC, subnet, internet gateway, route table, security group) plus **two** EC2 instances (`dev-server-1`, `dev-server-2`), each tagged with a unique `Name`
+- Instead of a static `hosts` file, **Ansible's `amazon.aws.aws_ec2` inventory plugin** queries the live AWS API for any instance matching the configured region and tag filter, and automatically places matching hosts into the `aws_ec2` group
+- The same **single playbook** then targets `hosts: aws_ec2`, running identically against every instance the plugin discovers — whether that's 2 servers today or 20 tomorrow, with **no playbook or inventory file changes required**
+- Each instance ends up running the same three-container stack (Java app + MySQL + phpMyAdmin), independently reachable on ports **8080**, **3306** and **8083**
 
 ## 🧭 Implementation Guide
 
@@ -135,8 +137,17 @@ Before running this automation, make sure you have the following in place:
   pip install ansible
   ```
 
-- ✅ An **AWS account** with credentials configured locally (e.g. via `aws configure` or environment variables), since the Terraform AWS provider authenticates using the standard AWS credential chain, see [Terraform AWS Provider docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-- ✅ An **SSH key pair** generated locally, whose public key path is referenced in [terraform.tfvars](terraform/terraform.tfvars) and gets attached to the EC2 instance via `aws_key_pair`
+- ✅ The **`amazon.aws`** Ansible Collection installed, since the `aws_ec2` inventory plugin lives in it, see [Ansible Collection for Amazon AWS](https://docs.ansible.com/ansible/latest/collections/amazon/aws/index.html)
+
+  ```bash
+  ansible-galaxy collection install amazon.aws
+
+  # the collection's aws_ec2 plugin also needs boto3 & botocore installed
+  pip install boto3 botocore
+  ```
+
+- ✅ An **AWS account** with credentials configured locally (e.g. via `aws configure` or environment variables) — both Terraform's AWS provider **and** the `aws_ec2` inventory plugin authenticate using the standard AWS credential chain, see [Terraform AWS Provider docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- ✅ An **SSH key pair** generated locally, whose public key path is referenced in [terraform.tfvars](terraform/terraform.tfvars) and gets attached to both EC2 instances via `aws_key_pair`
 
   ```bash
   ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519
@@ -155,24 +166,12 @@ Before running this automation, make sure you have the following in place:
   # then edit project-vars with your own docker_password
   ```
 
-### 2. Provision the AWS network & EC2 instance with Terraform
+### 2. Provision two AWS EC2 instances with Terraform
 
-The core of the infrastructure lives in [terraform/main.tf](terraform/main.tf). It declares, in order:
-
-- A **VPC** (`aws_vpc`) with DNS hostnames enabled
-- A **subnet** (`aws_subnet`) inside that VPC, pinned to a specific availability zone
-- An **internet gateway** (`aws_internet_gateway`) and a **default route table** (`aws_default_route_table`) routing `0.0.0.0/0` traffic through it, giving the subnet internet access
-- A **default security group** (`aws_default_security_group`) allowing inbound SSH (22) only from the operator's own IP, inbound 8080 from anywhere, and unrestricted egress
-- A **data source** (`data "aws_ami"`) that dynamically resolves the latest **Amazon Linux 2023** AMI, avoiding a hardcoded, region-specific AMI ID
-- An **`aws_key_pair`** resource that uploads the local public key so Ansible/SSH can authenticate
-- The **`aws_instance`** itself (`myapp-server`), attached to the subnet, security group and key pair
+[terraform/main.tf](terraform/main.tf) declares the shared networking (VPC, subnet, internet gateway, default route table, default security group) and a dynamically resolved **Amazon Linux 2023** AMI, then provisions **two** identically configured EC2 instances, each with its own `Name` tag so the dynamic inventory plugin can later tell them apart and group them:
 
 ```hcl
-provider "aws" {
-  region = "eu-central-1"
-}
-
-resource "aws_instance" "myapp-server" {
+resource "aws_instance" "myapp-server-one" {
   ami = data.aws_ami.latest-amazon-linux-image.id
   instance_type = var.instance_type
 
@@ -184,25 +183,40 @@ resource "aws_instance" "myapp-server" {
   key_name = aws_key_pair.ssh-key.key_name
 
   tags = {
-    Name: "${var.env_prefix}-server"
+    Name: "${var.env_prefix}-server-1"
+  }
+}
+
+resource "aws_instance" "myapp-server-two" {
+  ami = data.aws_ami.latest-amazon-linux-image.id
+  instance_type = var.instance_type
+
+  subnet_id = aws_subnet.myapp-subnet-1.id
+  vpc_security_group_ids = [aws_default_security_group.default-sg.id]
+  availability_zone = var.avail_zone
+
+  associate_public_ip_address = true
+  key_name = aws_key_pair.ssh-key.key_name
+
+  tags = {
+    Name: "${var.env_prefix}-server-2"
   }
 }
 ```
 
-The provider version is pinned in [terraform/providers.tf](terraform/providers.tf) to keep the build reproducible:
+The security group opens SSH (22) only to the operator's own IP and the application port (8080) to the world, while outputs expose both instances' public IPs and the resolved AMI ID for convenience:
 
 ```hcl
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-      version = "5.20.1"
-    }
-  }
+output "ec2-public_ip_1" {
+  value = aws_instance.myapp-server-one.public_ip
+}
+
+output "ec2-public_ip_2" {
+  value = aws_instance.myapp-server-two.public_ip
 }
 ```
 
-Environment-specific values (region details, CIDR blocks, the operator's IP, key file paths) are kept out of version control and supplied through a `.tfvars` file, following [Terraform's recommended variable-definition pattern](https://developer.hashicorp.com/terraform/language/values/variables#variable-definitions-tfvars-files):
+Environment-specific values are supplied through [terraform/example.tfvars](terraform/example.tfvars) (copied locally to `terraform.tfvars`, which is git-ignored):
 
 ```ini
 # Update these values to match your AWS setup and workstation IP
@@ -216,8 +230,6 @@ public_key_location = "PATH_TO_PUB_KEY"
 private_key_location = "PATH_TO_PRIV_KEY"
 ```
 
-> 💡 [terraform/entry-script.sh](terraform/entry-script.sh) documents the manual, bash equivalent of installing Docker on the instance (`yum install docker`, `systemctl start docker`, `usermod -aG docker`). It was the starting reference point before the exact same steps were re-implemented as idempotent Ansible tasks in the next section — it is no longer wired into Terraform as `user_data` since Ansible now owns that responsibility.
-
 Initialize and apply the Terraform configuration:
 
 ```bash
@@ -227,15 +239,70 @@ terraform plan -var-file=terraform.tfvars
 terraform apply -var-file=terraform.tfvars
 ```
 
-### 3. Write the Ansible Playbook that configures Docker
+Once applied, both instances show up as `running` in the AWS console, tagged `dev-server-1` and `dev-server-2`:
 
-Before wiring anything into Terraform, the configuration logic was built and tested as a standalone playbook: [ansible/deploy-docker-new-user.yaml](ansible/deploy-docker-new-user.yaml), organized into **five plays**.
+![Two running EC2 instances shown in the AWS console](images/ec2-instances-aws-console.png)
+
+### 3. Configure the `aws_ec2` dynamic inventory plugin
+
+Rather than hand-writing a static inventory with two hardcoded IPs, Ansible's **inventory plugins** can generate the inventory automatically from an external source of truth — here, the AWS EC2 API itself. To see every inventory plugin available out of the box:
+
+```bash
+ansible-doc -t inventory -l
+```
+
+The plugin must first be enabled, either in the Ansible config or directly in the inventory file. In this project, [ansible/ansible.cfg](ansible/ansible.cfg) enables it and also configures the SSH connection defaults so they don't need to be repeated per host:
+
+```ini
+[defaults]
+host_key_checking = False
+inventory = inventory_aws_ec2.yaml
+
+enable_plugins = aws_ec2
+
+remote_user = ec2-user
+private_key_file = ~/.ssh/id_ed25519
+```
+
+The plugin itself is configured through [ansible/inventory_aws_ec2.yaml](ansible/inventory_aws_ec2.yaml) — note the filename **must** end in `_aws_ec2.yaml` (or `.yml`) for Ansible to recognize it as an `aws_ec2` inventory source:
+
+```yaml
+---
+plugin: aws_ec2
+regions: 
+  - eu-central-1
+filters:
+  tag:Name: dev*
+# keyed_groups:
+#   - key: tags.Name
+#     prefix: tag_Name_
+```
+
+- **`plugin: aws_ec2`** selects the `amazon.aws.aws_ec2` inventory plugin
+- **`regions`** scopes the EC2 `describe-instances` API call to a specific AWS region, keeping discovery fast and avoiding cross-region noise
+- **`filters`** narrows the returned instances using native [EC2 API filters](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html) — here, only instances whose `Name` tag matches the `dev*` wildcard are included
+- The commented-out **`keyed_groups`** block shows how the plugin can also auto-generate additional groups (e.g. `tag_Name_dev-server-1`) based on instance tags, useful for targeting subsets of a larger fleet
+
+Every matching instance is automatically placed into a group literally called **`aws_ec2`**, which is exactly the group the playbook targets instead of `all` or a hardcoded IP list.
+
+To inspect what the plugin actually discovers, without running any playbook:
+
+```bash
+# according to above config, below will list all the ec2 instances in eu-central-1 region
+ansible-inventory -i inventory_aws_ec2.yaml --list
+# or graph view
+ansible-inventory -i inventory_aws_ec2.yaml --graph
+```
+
+### 4. Write the Ansible Playbook to target the dynamic group
+
+The deployment logic in [ansible/deploy-docker-new-user.yaml](ansible/deploy-docker-new-user.yaml) is organized into **five plays**, every one of them targeting `hosts: aws_ec2` — the dynamic group produced by the plugin — rather than any hardcoded IP:
 
 **Play 1 — Wait for SSH to be ready**
 
 ```yaml
 - name: Wait for SSH connection
-  hosts: all
+  hosts: aws_ec2
   gather_facts: False
   tasks:
     - name: Ensure SSH port open
@@ -250,13 +317,13 @@ Before wiring anything into Terraform, the configuration logic was built and tes
         ansible_python_interpreter: /usr/bin/python3
 ```
 
-Because the EC2 instance may still be booting when the playbook first tries to connect, `wait_for` polls the target's SSH port **locally** (`ansible_connection: local`) until OpenSSH responds, avoiding a race condition between "instance created" and "instance actually reachable".
+Freshly launched EC2 instances may still be booting when Ansible first tries to reach them, so `wait_for` polls each discovered host's SSH port **locally** until OpenSSH responds, avoiding a race condition right after `terraform apply`.
 
 **Play 2 — Install Docker**
 
 ```yaml
 - name: Install Docker
-  hosts: all
+  hosts: aws_ec2
   become: yes
   tasks:
     - name: Install Docker
@@ -270,13 +337,13 @@ Because the EC2 instance may still be booting when the playbook first tries to c
         state: started
 ```
 
-Amazon Linux uses the **`yum`** package manager (rather than `apt`), and the Docker daemon is started and enabled via the `systemd` module.
+Amazon Linux uses the **`yum`** package manager, and the Docker daemon is started and enabled via the `systemd` module — run against **every** host the dynamic inventory returns, simultaneously.
 
 **Play 3 — Create a dedicated Linux user**
 
 ```yaml
 - name: Create new linux user
-  hosts: all
+  hosts: aws_ec2
   become: yes
   tasks: 
     - name: Create new linux user
@@ -291,7 +358,7 @@ Running the application stack under its own user (`appuser`) rather than `ec2-us
 
 ```yaml
 - name: Install Docker-compose
-  hosts: all
+  hosts: aws_ec2
   become: yes
   become_user: appuser
   tasks:
@@ -309,13 +376,13 @@ Running the application stack under its own user (`appuser`) rather than `ec2-us
         mode: +x
 ```
 
-Docker Compose is installed as the modern **[CLI plugin](https://docs.docker.com/compose/install/linux/)** (`docker compose`, not the legacy standalone `docker-compose` binary), dropped into `~/.docker/cli-plugins/`. The remote CPU architecture is detected at runtime with `uname -m` and interpolated into the GitHub release download URL, so the same task works whether the EC2 instance type is x86_64 or ARM-based.
+Docker Compose is installed as the modern **[CLI plugin](https://docs.docker.com/compose/install/linux/)** (`docker compose`, not the legacy standalone binary), with the target CPU architecture detected at runtime via `uname -m` so the same task works across any instance type the dynamic inventory might return.
 
 **Play 5 — Deploy the application stack**
 
 ```yaml
 - name: Start docker containers
-  hosts: all
+  hosts: aws_ec2
   become: yes
   become_user: appuser
   vars_files:
@@ -334,131 +401,66 @@ Docker Compose is installed as the modern **[CLI plugin](https://docs.docker.com
         project_src: /home/appuser
 ```
 
-- `vars_files: - project-vars` — the Docker Hub password is externalized into a **git-ignored** vars file instead of being hardcoded in the playbook, keeping credentials out of version control (for production use, this value would ideally be encrypted with **Ansible Vault** rather than kept as plaintext)
-- `copy` ships the [bootcamp-java-mysql-project/docker-compose-full.yaml](bootcamp-java-mysql-project/docker-compose-full.yaml) stack definition straight from the control node to the new user's home directory
+- `vars_files: - project-vars` — the Docker Hub password is externalized into a **git-ignored** vars file instead of being hardcoded in the playbook (for production, this would ideally be encrypted with **Ansible Vault** rather than kept as plaintext)
+- `copy` ships the [bootcamp-java-mysql-project/docker-compose-full.yaml](bootcamp-java-mysql-project/docker-compose-full.yaml) stack definition from the control node to every discovered instance
 - `docker_login` authenticates against Docker Hub so the private application image can be pulled
-- `community.docker.docker_compose_v2` is the Ansible Collection module that wraps the modern `docker compose` CLI plugin, bringing the whole stack up declaratively
+- `community.docker.docker_compose_v2` wraps the modern `docker compose` CLI plugin, bringing the whole stack up declaratively on each host
 
-The application stack itself, [docker-compose-full.yaml](bootcamp-java-mysql-project/docker-compose-full.yaml), defines three services:
+> 📌 The legacy static [ansible/hosts](ansible/hosts) inventory file is still kept in the repo for reference and manual/ad-hoc runs against specific known hosts, independent of the dynamic inventory flow.
 
-```yaml
-version: '3'
-services:
-  java-app:
-    image: mustafa199b/demo:java-maven-2.0
-    environment:
-      - DB_USER=user
-      - DB_PWD=pass
-      - DB_SERVER=mysql
-      - DB_NAME=my-app-db
-    ports:
-    - 8080:8080
-    container_name: my-java-app
-  mysql:
-    image: mysql
-    ports:
-      - 3306:3306
-    environment:
-      - MYSQL_ROOT_PASSWORD=my-secret-pw
-      - MYSQL_DATABASE=my-app-db
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=pass
-    volumes:
-    - mysql-data:/var/lib/mysql
-    container_name: mysql
-  phpmyadmin:
-    image: phpmyadmin
-    environment:
-      - PMA_HOST=mysql
-    ports:
-      - 8083:80
-    container_name: myadmin
-volumes:
-  mysql-data:
-    driver: local
-```
+### 5. Run the playbook against the dynamically discovered fleet
 
-- **`java-app`** — a pre-built Java/Maven application image, connecting to MySQL using environment variables
-- **`mysql`** — the backing relational database, persisting its data to a named Docker **volume** (`mysql-data`) so data survives container restarts
-- **`phpmyadmin`** — a web UI for inspecting/administering the MySQL database, pointed at the `mysql` service by name (Docker Compose's built-in service discovery)
-
-### 4. Integrate Ansible into Terraform with a provisioner
-
-With the playbook proven to work standalone, the final step was wiring it into Terraform so it runs **automatically** right after the EC2 instance is created — no manual inventory editing, no manually re-running `ansible-playbook`:
-
-```hcl
-resource "null_resource" "configure_server" {
-  triggers = {
-    trigger = aws_instance.myapp-server.public_ip
-  }
-
-  provisioner "local-exec" {
-    working_dir = "../ansible"
-    command = "ansible-playbook --inventory ${aws_instance.myapp-server.public_ip}, --private-key ${var.private_key_location} --user ec2-user deploy-docker-new-user.yaml"
-  }
-}
-```
-
-- **`null_resource`** is a Terraform resource with no real infrastructure behind it — it exists purely to attach the provisioner logic to Terraform's dependency graph
-- **`triggers`** ties this resource to the EC2 instance's public IP: if the IP ever changes (e.g. the instance is replaced), Terraform knows to re-run the provisioner
-- **`local-exec`** runs the given command **on the machine running Terraform** (the control node), not on the remote instance — which is exactly where `ansible-playbook` needs to run from
-- The `--inventory ${aws_instance.myapp-server.public_ip},` flag builds a **one-off, dynamic inventory** on the fly (the trailing comma tells Ansible to treat the value as a host list rather than a file path), removing any need to hand-maintain a static `hosts` file for this automated flow
-- `--private-key` and `--user ec2-user` supply the SSH credentials Ansible needs to connect to the freshly created instance
-
-> 📌 The static [ansible/hosts](ansible/hosts) inventory file is still kept in the repo for **manual/ad-hoc** runs and troubleshooting directly against a known host, independent of the Terraform-driven flow.
-
-### 5. Apply & watch the full pipeline run end-to-end
-
-With everything wired together, a single command provisions the AWS infrastructure **and** configures the application on top of it:
+With the plugin configured and the playbook written, a single command targets **both** EC2 instances — without either of their IPs ever being typed into a config file by hand:
 
 ```bash
-cd terraform
-terraform apply -var-file=terraform.tfvars
+ansible-playbook -i inventory_aws_ec2.yaml deploy-docker-new-user.yaml
 ```
 
-Terraform first creates the VPC/networking/EC2 resources, then immediately triggers the `null_resource.configure_server` provisioner, which shells out to `ansible-playbook` and streams the playbook's own output straight into the Terraform apply log:
+Ansible resolves the `aws_ec2` inventory at run time, discovers both `dev-server-1` and `dev-server-2` by their public DNS names, and then executes every play against both hosts in parallel — installing Docker, creating the `appuser` account, installing Docker Compose, and deploying the stack:
 
-![Terraform apply running the Ansible playbook via local-exec](images/terraform-apply-terminal.png)
+![Ansible playbook run targeting the dynamically discovered EC2 fleet](images/ansible-playbook-terminal.png)
 
-The `PLAY RECAP` (`ok=14 changed=9 ... failed=0`) confirms every Ansible task succeeded, followed by Terraform's own `Apply complete!` summary and the `ec2-public_ip` / `aws-ami_id` outputs.
+The `PLAY RECAP` at the end (`ok=14 changed=9 unreachable=0 failed=0` for **each** host) confirms the exact same automation succeeded identically across both dynamically discovered instances.
 
 ### 6. Verify the deployment
 
-SSH-ing into the newly provisioned EC2 instance confirms the compose file was copied correctly and all three containers are up and healthy:
+SSH-ing into one of the discovered instances and checking its running containers confirms the full stack (Java app + MySQL + phpMyAdmin) deployed successfully:
 
 ```bash
-ssh ec2-user@<ec2-public-ip>
-sudo ls /home/appuser/
+ssh ec2-user@<ec2-public-dns>
+docker ps
+# if permission denied, the user's docker group membership hasn't been re-applied to this SSH session yet:
 sudo docker ps
 ```
 
-![Docker containers running on the EC2 instance](images/ec2-server-docker-running-terminal.png)
+![Docker containers running on a dynamically discovered EC2 instance](images/ec2-server-docker-terminal.png)
 
-`docker ps` shows `my-java-app`, `myadmin` and `mysql` all `Up`, bound to ports `8080`, `8083` and `3306` respectively — confirming the application is reachable from a browser at `http://<ec2-public-ip>:8080` (and phpMyAdmin at `:8083`).
+`docker ps` shows `my-java-app`, `myadmin` and `mysql` all `Up`, bound to ports `8080`, `8083` and `3306` respectively — confirming the application is reachable from a browser at `http://<ec2-public-ip>:8080` (and phpMyAdmin at `:8083`), on **every** instance the dynamic inventory returned.
 
 ## ✅ Final result
 
 By the end of this demo:
 
-- 🖥️ A complete AWS network (VPC, subnet, internet gateway, route table, security group) and an EC2 instance were provisioned entirely through **Terraform**, with the AMI resolved dynamically rather than hardcoded
-- 🔗 Terraform's `null_resource` + `local-exec` **provisioner** was configured to automatically invoke `ansible-playbook` the moment the instance's public IP became available, passing it in as a one-off dynamic inventory
-- ⚙️ **Ansible** installed Docker and the modern Docker Compose CLI plugin on the instance, waiting safely for SSH to come up first
-- 👤 A dedicated, least-privilege Linux user (`appuser`) was created and added to the `docker` group to own and run the application containers
+- 🖥️ Two AWS EC2 instances (plus the shared VPC/subnet/security group networking) were provisioned entirely through **Terraform**, each tagged with a distinct `Name`
+- 🔍 Ansible's **`amazon.aws.aws_ec2` dynamic inventory plugin** was configured to query the live AWS API, filter instances by tag, and automatically populate the `aws_ec2` host group — with **zero** manually maintained IP addresses
+- ⚙️ A single Ansible playbook installed Docker and the modern Docker Compose CLI plugin identically across **every** discovered instance, waiting safely for SSH to come up first on each
+- 👤 A dedicated, least-privilege Linux user (`appuser`) was created and added to the `docker` group on every host to own and run the application containers
 - 🔐 Docker Hub credentials were externalized into a git-ignored `project-vars` file rather than hardcoded, and used to authenticate via the `docker_login` module
-- 📦 A three-service application stack (Java app + MySQL + phpMyAdmin) was shipped and started with `community.docker.docker_compose_v2`, and verified running with `docker ps`
-- 🔁 The entire pipeline — from `terraform apply` to a fully running, multi-container application — is **repeatable and idempotent**, turning infrastructure provisioning and application configuration into a single, unified command
+- 📦 A three-service application stack (Java app + MySQL + phpMyAdmin) was shipped and started with `community.docker.docker_compose_v2`, and verified running with `docker ps` on the target fleet
+- 🔁 The entire workflow is **fleet-ready by design** — adding a third, fourth, or hundredth EC2 instance requires **no changes** to the playbook or inventory configuration, only matching the existing tag filter
 
-This project demonstrates a practical, production-style pattern for combining **Infrastructure as Code** and **Configuration Management**: Terraform owns the infrastructure lifecycle, Ansible owns the software configuration, and a Terraform provisioner bridges the two into one seamless, automated deployment pipeline.
+This project demonstrates a practical, production-style pattern for scaling **Configuration Management**: instead of an inventory file that must be manually kept in sync with ever-changing cloud infrastructure, Ansible's dynamic inventory plugins turn the cloud provider's own API into a live, always-accurate source of truth — the same approach used to manage real elastic, auto-scaling fleets at scale.
 
 ## 📚 References
 
 - [Terraform Documentation](https://developer.hashicorp.com/terraform/docs)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-- [Terraform `null_resource`](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource)
-- [Terraform `local-exec` Provisioner](https://developer.hashicorp.com/terraform/language/resources/provisioners/local-exec)
 - [Terraform Variable Definitions (`.tfvars` files)](https://developer.hashicorp.com/terraform/language/values/variables#variable-definitions-tfvars-files)
 - [Ansible Documentation](https://docs.ansible.com/)
-- [Ansible Modules Index](https://docs.ansible.com/projects/ansible/latest/collections/index_module.html)
+- [Ansible Dynamic Inventory](https://docs.ansible.com/ansible/latest/inventory_guide/intro_dynamic_inventory.html)
+- [Ansible Inventory Plugins Index](https://docs.ansible.com/ansible/latest/collections/index_inventory.html)
+- [`amazon.aws.aws_ec2` Inventory Plugin](https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ec2_inventory.html)
+- [Ansible Collection: amazon.aws](https://docs.ansible.com/ansible/latest/collections/amazon/aws/index.html)
 - [Ansible `wait_for` module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/wait_for_module.html)
 - [Ansible `yum` module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/yum_module.html)
 - [Ansible `user` module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/user_module.html)
@@ -466,5 +468,6 @@ This project demonstrates a practical, production-style pattern for combining **
 - [Ansible `community.docker.docker_compose_v2` module](https://docs.ansible.com/ansible/latest/collections/community/docker/docker_compose_v2_module.html)
 - [Ansible Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html)
 - [Docker Compose CLI Plugin Installation](https://docs.docker.com/compose/install/linux/)
+- [AWS EC2 `DescribeInstances` API (filters reference)](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html)
 - [AWS EC2 Documentation](https://docs.aws.amazon.com/ec2/)
 - [Amazon Linux 2023](https://docs.aws.amazon.com/linux/al2023/ug/what-is-amazon-linux.html)
